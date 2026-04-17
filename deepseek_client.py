@@ -27,10 +27,16 @@ class DeepSeekClient:
             "temperature": 0.7,
             "max_tokens": 500
         }
+        if not self.api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY не задан в переменных окружения")
         try:
             response = await self.client.post(self.base_url, headers=headers, json=payload)
             response.raise_for_status()
             return response.json()["choices"][0]["message"]["content"]
         except Exception as e:
-            return f"Ошибка при обращении к DeepSeek: {e}"
+            raise RuntimeError(f"Ошибка при обращении к DeepSeek: {e}") from e
+
+    async def close(self):
+        """Корректно закрывает HTTP-клиент."""
+        await self.client.aclose()
             
