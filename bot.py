@@ -19,6 +19,13 @@ dp = Dispatcher()
 deepseek = DeepSeekClient()
 mcp_1c = MCPClient1C()
 
+
+@dp.shutdown()
+async def on_shutdown():
+    """Закрываем сетевые клиенты при остановке бота."""
+    await deepseek.close()
+    await mcp_1c.close()
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Обработчик команды /start."""
@@ -41,8 +48,12 @@ async def handle_message(message: types.Message):
     # 2. Показываем статус "печатает..."
     await bot.send_chat_action(chat_id, action="typing")
 
-    # 3. Получаем первый ответ от DeepSeek (он может содержать команду 1С_QUERY)
-    ai_response = await deepseek.get_response(full_context)
+    try:
+        # 3. Получаем первый ответ от DeepSeek (он может содержать команду 1С_QUERY)
+        ai_response = await deepseek.get_response(full_context)
+    except Exception as exc:
+        await message.answer(f"Не удалось получить ответ от ИИ: {exc}")
+        return
 
     # 4. Проверяем, нужно ли обращаться к 1С
     if ai_response.startswith("1С_QUERY:"):
@@ -51,8 +62,12 @@ async def handle_message(message: types.Message):
         # Информируем пользователя о начале выполнения запроса
         await message.answer(f"⏳ Выполняю запрос к 1С: «{query_text}»...")
 
-        # Отправляем запрос к MCP-серверу 1С
-        mcp_result = await mcp_1c.call_tool("query_data", {"query": query_text})
+        try:
+            # Отправляем запрос к MCP-серверу 1С
+            mcp_result = await mcp_1c.call_tool("query_data", {"query": query_text})
+        except Exception as exc:
+            await message.answer(f"Ошибка при обращении к 1С: {exc}")
+            return
 
         # Формируем дополнительное системное сообщение с результатом из 1С
         system_info = {
@@ -60,8 +75,12 @@ async def handle_message(message: types.Message):
             "content": f"Ответ от 1С на запрос пользователя: {mcp_result}"
         }
 
-        # Повторно обращаемся к DeepSeek, чтобы он сформулировал финальный ответ
-        final_response = await deepseek.get_response([system_info] + full_context)
+        try:
+            # Повторно обращаемся к DeepSeek, чтобы он сформулировал финальный ответ
+            final_response = await deepseek.get_response([system_info] + full_context)
+        except Exception as exc:
+            await message.answer(f"Не удалось сформировать финальный ответ: {exc}")
+            return
 
         # Отправляем итоговый ответ пользователю
         await message.answer(final_response)
