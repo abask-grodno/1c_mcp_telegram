@@ -102,7 +102,7 @@ async def on_shutdown():
     await mcp_1c.close()
 
 
-@dp.message(Command("start", "help"))
+@dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
         "👋 Привет! Я бот-помощник для работы с 1С через MCP.\n\n"
@@ -112,14 +112,32 @@ async def cmd_start(message: types.Message):
         "• Автоматически анализирую ошибки и уточняю запросы\n"
         "• Поддерживаю контекст диалога (до 20 сообщений)\n\n"
         "🔧 **Поддерживаемые AI-модели:** DeepSeek, OpenAI, Anthropic, Google Gemini\n\n"
-        "📝 **Команды:**\n"
-        "• /start, /help — это сообщение\n"
-        "• /clear — очистить историю диалога\n\n"
         "💡 **Как использовать:**\n"
         "Просто опиши, что нужно из базы 1С. Например:\n"
         "\"Какие документы продаж были вчера?\"\n"
         "\"Сколько товаров осталось на складе?\"\n"
-        "\"Покажи структуру документа РеализацияТоваровУслуг\""
+        "\"Покажи структуру документа РеализацияТоваровУслуг\"\n\n"
+        "📝 **Доступные команды:** /help"
+    )
+
+
+@dp.message(Command("help"))
+async def cmd_help(message: types.Message):
+    await message.answer(
+        "📋 **Доступные команды:**\n\n"
+        "• /start — приветственное сообщение\n"
+        "• /help — эта справка\n"
+        "• /clear — очистить историю диалога\n\n"
+        "🔧 **Настройки:**\n"
+        "Бот поддерживает различные AI-модели через переменные окружения:\n"
+        "• AI_MODEL_PROVIDER — провайдер (deepseek, openai, anthropic, google)\n"
+        "• AI_MODEL_API_KEY — API-ключ\n"
+        "• AI_MODEL_BASE_URL — URL API\n"
+        "• AI_MODEL_NAME — имя модели\n\n"
+        "⚙️ **MCP-интеграция:**\n"
+        "• MCP_SERVER_URL — URL MCP-сервера 1С\n"
+        "• MCP_AUTH_USERNAME/PASSWORD — аутентификация (опционально)\n"
+        "• MAX_ITERATIONS — лимит итераций для уточнения запросов (по умолчанию 5)"
     )
 
 
