@@ -264,7 +264,8 @@ class MCPClient1C:
         data = await self._send_request("tools/call", params)
         result = data.get("result")
 
-        if cache_path and result is not None:
+        # Cache only get_metadata_structure results, not list_metadata_objects
+        if cache_path and tool_name == "get_metadata_structure" and result is not None:
             self._store_structure_cache(cache_path, result)
 
         self.last_call_cache_hit = False
