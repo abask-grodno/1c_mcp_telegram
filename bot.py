@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 
-from deepseek_client import DeepSeekClient
+from ai_client import AIClient
 from context_manager import ContextManager
 from mcp_client_1c import MCPClient1C
 
@@ -43,7 +43,7 @@ logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, handlers=handlers)
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
 
-deepseek = DeepSeekClient()
+ai_client = AIClient()
 mcp_1c = MCPClient1C()
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))
 
@@ -98,14 +98,14 @@ def extract_mcp_call(ai_response: str) -> Optional[Tuple[str, dict]]:
 
 @dp.shutdown()
 async def on_shutdown():
-    await deepseek.close()
+    await ai_client.close()
     await mcp_1c.close()
 
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
-        "Привет! Я бот-помощник на DeepSeek.\n"
+        "Привет! Я бот-помощник на AI модели.\n"
         "Помню контекст диалога (до 20 сообщений).\n"
         "Могу запрашивать данные в 1С через MCP — опиши, что нужно из базы.\n\n"
         "Команды: /clear — очистить историю диалога."
@@ -128,7 +128,7 @@ async def handle_message(message: types.Message):
     await bot.send_chat_action(chat_id, action="typing")
 
     try:
-        ai_response = await deepseek.get_response(full_context)
+        ai_response = await ai_client.get_response(full_context)
     except Exception as exc:
         await message.answer(f"Не удалось получить ответ от ИИ: {exc}")
         return
@@ -202,22 +202,21 @@ async def handle_message(message: types.Message):
 
             await bot.send_chat_action(chat_id, action="typing")
             try:
-                deepseek_response = await deepseek.get_response(follow_up, max_tokens=4000)
+                ai_response = await ai_client.get_response(follow_up, max_tokens=4000)
             except Exception as exc:
-                await message.answer(f"Не удалось обработать результат через DeepSeek: {exc}")
+                await message.answer(f"Не удалось обработать результат через ИИ: {exc}")
                 return
 
             conversation_history.extend(iteration_messages)
-            conversation_history.append({"role": "assistant", "content": deepseek_response})
+            conversation_history.append({"role": "assistant", "content": ai_response})
 
-            new_call = extract_mcp_call(deepseek_response)
+            new_call = extract_mcp_call(ai_response)
             if new_call:
                 tool_name, tool_arguments = new_call
-                ai_response = deepseek_response
                 continue
 
-            await message.answer(deepseek_response)
-            ContextManager.update_dialog(chat_id, user_text, deepseek_response)
+            await message.answer(ai_response)
+            ContextManager.update_dialog(chat_id, user_text, ai_response)
             return
 
         await message.answer(
