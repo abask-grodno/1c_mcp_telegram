@@ -45,6 +45,8 @@ dp = Dispatcher()
 
 deepseek = DeepSeekClient()
 mcp_1c = MCPClient1C()
+MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))
+
 
 def extract_mcp_call(ai_response: str) -> Optional[Tuple[str, dict]]:
     """
@@ -110,38 +112,82 @@ async def handle_message(message: types.Message):
     mcp_call = extract_mcp_call(ai_response)
     if mcp_call:
         tool_name, tool_arguments = mcp_call
-        await message.answer(f"⏳ Выполняю MCP-инструмент: `{tool_name}`...")
+        iteration = 0
+        last_error = None
 
-        try:
-            mcp_result = await mcp_1c.call_tool(tool_name, tool_arguments)
-        except Exception as exc:
-            await message.answer(f"Ошибка при обращении к 1С: {exc}")
+        while iteration < MAX_ITERATIONS:
+            iteration += 1
+            await message.answer(
+                f"⏳ Итерация {iteration}/{MAX_ITERATIONS}. Выполняю MCP-инструмент: `{tool_name}`..."
+            )
+
+            try:
+                mcp_result_raw = await mcp_1c.call_tool(tool_name, tool_arguments)
+                last_error = None
+            except Exception as exc:
+                last_error = str(exc)
+                mcp_result_raw = ""
+
+            follow_up = list(full_context)
+            follow_up.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "Ниже результат вызова MCP-инструмента."
+                        if not last_error
+                        else "При вызове MCP-инструмента возникла ошибка."
+                    ),
+                }
+            )
+
+            if last_error:
+                follow_up.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Ошибка вызова инструмента `{tool_name}`: {last_error}."
+                            " Если это recoverable ошибка (например, неверные аргументы), предложи скорректировать запрос"
+                            " и покажи скорректированный MCP_CALL. Если ошибку исправить нельзя, сообщи, что запрос не"
+                            " выполнен."
+                        ),
+                    }
+                )
+            else:
+                follow_up.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Результат вызова MCP-инструмента `{tool_name}` (сырые данные):\n{mcp_result_raw}\n\n"
+                            "Сформулируй понятный ответ пользователю по его последнему сообщению. Если результат неполный"
+                            " или требует дополнительного запроса, предложи скорректированный MCP_CALL."
+                        ),
+                    }
+                )
+
+            await bot.send_chat_action(chat_id, action="typing")
+            try:
+                deepseek_response = await deepseek.get_response(follow_up, max_tokens=4000)
+            except Exception as exc:
+                await message.answer(f"Не удалось обработать результат через DeepSeek: {exc}")
+                return
+
+            new_call = extract_mcp_call(deepseek_response)
+            if new_call:
+                tool_name, tool_arguments = new_call
+                ai_response = deepseek_response
+                continue
+
+            await message.answer(deepseek_response)
+            ContextManager.update_dialog(chat_id, user_text, deepseek_response)
             return
 
-        follow_up = list(full_context)
-        follow_up.append(
-            {
-                "role": "user",
-                "content": (
-                    f"Результат вызова MCP-инструмента `{tool_name}` (сырые данные):\n{mcp_result}\n\n"
-                    "Сформулируй понятный ответ пользователю по его последнему сообщению. "
-                    "Не выдумывай цифры — используй только то, что есть в результате."
-                ),
-            }
+        await message.answer(
+            "Не удалось получить корректный ответ после нескольких попыток. Попробуйте уточнить запрос."
         )
+        return
 
-        await bot.send_chat_action(chat_id, action="typing")
-        try:
-            final_response = await deepseek.get_response(follow_up, max_tokens=4000)
-        except Exception as exc:
-            await message.answer(f"Не удалось сформировать финальный ответ: {exc}")
-            return
-
-        await message.answer(final_response)
-        ContextManager.update_dialog(chat_id, user_text, final_response)
-    else:
-        await message.answer(ai_response)
-        ContextManager.update_dialog(chat_id, user_text, ai_response)
+    await message.answer(ai_response)
+    ContextManager.update_dialog(chat_id, user_text, ai_response)
 
 
 async def main():
