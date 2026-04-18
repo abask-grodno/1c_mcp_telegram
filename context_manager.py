@@ -81,6 +81,13 @@ class ContextManager:
         ContextManager.save_dialog_messages(chat_id, messages)
 
     @staticmethod
+    def clear_dialog(chat_id: int) -> None:
+        """Удаляет сохранённую историю диалога для чата."""
+        dialog_file = DIALOGS_DIR / f"{chat_id}.md"
+        if dialog_file.exists():
+            dialog_file.unlink()
+
+    @staticmethod
     def build_full_context(chat_id: int, current_user_msg: str) -> List[Dict[str, str]]:
         """
         Строит полный список сообщений для отправки в DeepSeek:
