@@ -49,17 +49,41 @@ MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))
 
 
 def extract_mcp_call(ai_response: str) -> Optional[Tuple[str, dict]]:
-    """
-    Ожидаемый формат ответа модели:
-    MCP_CALL: {"tool":"tool_name","arguments":{"key":"value"}}
-    """
-    cleaned = ai_response.strip()
-    if not cleaned.startswith("MCP_CALL:"):
+    """Ищет MCP_CALL в произвольном тексте и возвращает (tool, arguments)."""
+
+    if not ai_response:
         return None
 
-    raw_payload = cleaned.split(":", 1)[1].strip()
+    marker = "MCP_CALL:"
+    marker_index = ai_response.find(marker)
+    if marker_index == -1:
+        return None
+
+    remainder = ai_response[marker_index + len(marker) :].strip()
+    if not remainder:
+        return None
+
+    json_start = remainder.find("{")
+    if json_start == -1:
+        return None
+
+    brace_level = 0
+    json_chars = []
+    for char in remainder[json_start:]:
+        json_chars.append(char)
+        if char == "{":
+            brace_level += 1
+        elif char == "}":
+            brace_level -= 1
+            if brace_level == 0:
+                break
+
+    if brace_level != 0:
+        return None
+
+    json_payload = "".join(json_chars)
     try:
-        data = json.loads(raw_payload)
+        data = json.loads(json_payload)
     except json.JSONDecodeError:
         return None
 
