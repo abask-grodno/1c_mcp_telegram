@@ -57,6 +57,7 @@ class MCPClient1C:
         self.client = httpx.AsyncClient(timeout=120.0)
         self._request_ids = itertools.count(1)
         self._initialized = False
+        self.last_call_cache_hit = False
         self.structure_cache_dir = Path("contexts") / "structure"
         self.structure_cache_dir.mkdir(parents=True, exist_ok=True)
         logger.info(
@@ -216,9 +217,18 @@ class MCPClient1C:
         await self.initialize()
 
         cache_path = self._structure_cache_path(tool_name, arguments or {})
+        self.last_call_cache_hit = False
+
         if cache_path:
             cached, cached_data = self._load_structure_cache(cache_path)
             if cached:
+                logger.info(
+                    "MCP cache hit: tool=%s args=%s file=%s",
+                    tool_name,
+                    arguments,
+                    cache_path.name,
+                )
+                self.last_call_cache_hit = True
                 return json.dumps(cached_data, ensure_ascii=False, indent=2)
 
         params = {
@@ -231,6 +241,7 @@ class MCPClient1C:
         if cache_path and result is not None:
             self._store_structure_cache(cache_path, result)
 
+        self.last_call_cache_hit = False
         return _stringify_mcp_tool_result(result)
 
     async def close(self):
