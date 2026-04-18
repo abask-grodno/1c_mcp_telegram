@@ -5,6 +5,7 @@ import itertools
 import json
 import logging
 from pathlib import Path
+from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -63,7 +64,7 @@ class MCPClient1C:
             self.base_url,
         )
 
-    def _structure_cache_path(self, tool_name: str, arguments: dict) -> Path | None:
+    def _structure_cache_path(self, tool_name: str, arguments: dict) -> Optional[Path]:
         """Определяет путь к файлу кэша для структурных инструментов."""
 
         if tool_name == "list_metadata_objects":
