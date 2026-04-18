@@ -1,8 +1,11 @@
 # mcp_client_1c.py
 import os
+import re
 import itertools
 import json
 import logging
+from pathlib import Path
+
 import httpx
 from dotenv import load_dotenv
 
@@ -53,10 +56,51 @@ class MCPClient1C:
         self.client = httpx.AsyncClient(timeout=120.0)
         self._request_ids = itertools.count(1)
         self._initialized = False
+        self.structure_cache_dir = (
+            Path(__file__).resolve().parent / "contexts" / "structure"
+        )
+        self.structure_cache_dir.mkdir(parents=True, exist_ok=True)
         logger.info(
             "MCP client initialized: url=%s",
             self.base_url,
         )
+
+    def _structure_cache_path(self, tool_name: str, arguments: dict) -> Path | None:
+        """Определяет путь к файлу кэша для структурных инструментов."""
+
+        if tool_name == "list_metadata_objects":
+            meta_type = arguments.get("metaType") or "all"
+            key = f"list_{meta_type}"
+        elif tool_name == "get_metadata_structure":
+            meta_type = arguments.get("metaType") or "unknown"
+            name = arguments.get("name") or "unnamed"
+            key = f"structure_{meta_type}_{name}"
+        else:
+            return None
+
+        safe_key = re.sub(r"[^\w\-]+", "_", key, flags=re.UNICODE)
+        return self.structure_cache_dir / f"{safe_key}.json"
+
+    def _load_structure_cache(self, cache_path: Path) -> tuple[bool, object]:
+        if not cache_path.exists():
+            return False, None
+
+        try:
+            with cache_path.open("r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            logger.info("Используем кэш структуры: %s", cache_path.name)
+            return True, data
+        except Exception as exc:
+            logger.warning("Не удалось прочитать кэш %s: %s", cache_path, exc)
+            return False, None
+
+    def _store_structure_cache(self, cache_path: Path, data: object) -> None:
+        try:
+            with cache_path.open("w", encoding="utf-8") as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+            logger.info("Структура сохранена в кэш: %s", cache_path.name)
+        except Exception as exc:
+            logger.warning("Не удалось сохранить кэш %s: %s", cache_path, exc)
 
     def _shorten(self, value) -> str:
         """Ограничивает размер лога, чтобы не захламлять вывод."""
@@ -171,14 +215,25 @@ class MCPClient1C:
     async def call_tool(self, tool_name: str, arguments: dict) -> str:
         """Вызывает инструмент на сервере 1С; возвращает текст результата для ИИ."""
         await self.initialize()
+
+        cache_path = self._structure_cache_path(tool_name, arguments or {})
+        if cache_path:
+            cached, cached_data = self._load_structure_cache(cache_path)
+            if cached:
+                return json.dumps(cached_data, ensure_ascii=False, indent=2)
+
         params = {
             "name": tool_name,
             "arguments": arguments
         }
         data = await self._send_request("tools/call", params)
-        return _stringify_mcp_tool_result(data.get("result"))
+        result = data.get("result")
+
+        if cache_path and result is not None:
+            self._store_structure_cache(cache_path, result)
+
+        return _stringify_mcp_tool_result(result)
 
     async def close(self):
         """Корректно закрывает HTTP-клиент."""
         await self.client.aclose()
-
