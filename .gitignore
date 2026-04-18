@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 dialogs/
 *.log
+contexts/structure/
