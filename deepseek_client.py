@@ -9,9 +9,16 @@ class DeepSeekClient:
     def __init__(self):
         self.api_key = os.getenv("DEEPSEEK_API_KEY")
         self.base_url = "https://api.deepseek.com/v1/chat/completions"
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(timeout=120.0)
 
-    async def get_response(self, messages: list, model: str = "deepseek-chat"):
+    async def get_response(
+        self,
+        messages: list,
+        model: str = "deepseek-chat",
+        *,
+        max_tokens: int = 2000,
+        temperature: float = 0.7,
+    ):
         """
         Отправляет запрос к DeepSeek API и возвращает ответ.
         messages: список сообщений в формате [{"role": "user", "content": "..."}]
@@ -24,8 +31,8 @@ class DeepSeekClient:
         payload = {
             "model": model,
             "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 500
+            "temperature": temperature,
+            "max_tokens": max_tokens,
         }
         if not self.api_key:
             raise RuntimeError("DEEPSEEK_API_KEY не задан в переменных окружения")
