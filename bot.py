@@ -114,6 +114,8 @@ async def handle_message(message: types.Message):
         tool_name, tool_arguments = mcp_call
         iteration = 0
         last_error = None
+        conversation_history = list(full_context)
+        conversation_history.append({"role": "assistant", "content": ai_response})
 
         while iteration < MAX_ITERATIONS:
             iteration += 1
@@ -128,8 +130,7 @@ async def handle_message(message: types.Message):
                 last_error = str(exc)
                 mcp_result_raw = ""
 
-            follow_up = list(full_context)
-            follow_up.append(
+            iteration_messages = [
                 {
                     "role": "user",
                     "content": (
@@ -138,10 +139,10 @@ async def handle_message(message: types.Message):
                         else "При вызове MCP-инструмента возникла ошибка."
                     ),
                 }
-            )
+            ]
 
             if last_error:
-                follow_up.append(
+                iteration_messages.append(
                     {
                         "role": "user",
                         "content": (
@@ -153,7 +154,7 @@ async def handle_message(message: types.Message):
                     }
                 )
             else:
-                follow_up.append(
+                iteration_messages.append(
                     {
                         "role": "user",
                         "content": (
@@ -164,12 +165,17 @@ async def handle_message(message: types.Message):
                     }
                 )
 
+            follow_up = conversation_history + iteration_messages
+
             await bot.send_chat_action(chat_id, action="typing")
             try:
                 deepseek_response = await deepseek.get_response(follow_up, max_tokens=4000)
             except Exception as exc:
                 await message.answer(f"Не удалось обработать результат через DeepSeek: {exc}")
                 return
+
+            conversation_history.extend(iteration_messages)
+            conversation_history.append({"role": "assistant", "content": deepseek_response})
 
             new_call = extract_mcp_call(deepseek_response)
             if new_call:
@@ -184,6 +190,7 @@ async def handle_message(message: types.Message):
         await message.answer(
             "Не удалось получить корректный ответ после нескольких попыток. Попробуйте уточнить запрос."
         )
+        ContextManager.update_dialog(chat_id, user_text, ai_response)
         return
 
     await message.answer(ai_response)
