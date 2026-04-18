@@ -56,9 +56,7 @@ class MCPClient1C:
         self.client = httpx.AsyncClient(timeout=120.0)
         self._request_ids = itertools.count(1)
         self._initialized = False
-        self.structure_cache_dir = (
-            Path(__file__).resolve().parent / "contexts" / "structure"
-        )
+        self.structure_cache_dir = Path("contexts") / "structure"
         self.structure_cache_dir.mkdir(parents=True, exist_ok=True)
         logger.info(
             "MCP client initialized: url=%s",
