@@ -54,6 +54,21 @@ class MCPClient1C:
     def __init__(self):
         self.base_url = os.getenv("MCP_SERVER_URL")
         self.log_payload_max_len = int(os.getenv("MCP_LOG_PAYLOAD_MAX_LEN", "4000"))
+        
+        # Basic authentication (optional)
+        self.auth_username = os.getenv("MCP_AUTH_USERNAME")
+        self.auth_password = os.getenv("MCP_AUTH_PASSWORD")
+        self.auth = None
+        if self.auth_username and self.auth_password:
+            import base64
+            auth_str = f"{self.auth_username}:{self.auth_password}"
+            auth_bytes = auth_str.encode("utf-8")
+            auth_b64 = base64.b64encode(auth_bytes).decode("utf-8")
+            self.auth = f"Basic {auth_b64}"
+            logger.info("MCP client: Basic authentication enabled for user '%s'", self.auth_username)
+        else:
+            logger.info("MCP client: No authentication configured")
+        
         self.client = httpx.AsyncClient(timeout=120.0)
         self._request_ids = itertools.count(1)
         self._initialized = False
@@ -121,16 +136,21 @@ class MCPClient1C:
         if not self.base_url:
             raise RuntimeError("MCP_SERVER_URL не задан в переменных окружения")
 
+        headers = {}
+        if self.auth:
+            headers["Authorization"] = self.auth
+
         last_error = None
         for attempt in range(retries + 1):
             try:
                 logger.info(
-                    "MCP request -> method=%s attempt=%s payload=%s",
+                    "MCP request -> method=%s attempt=%s payload=%s auth=%s",
                     method,
                     f"{attempt + 1}/{retries + 1}",
                     self._shorten(payload),
+                    "yes" if self.auth else "no",
                 )
-                response = await self.client.post(self.base_url, json=payload)
+                response = await self.client.post(self.base_url, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
                 logger.info(
@@ -169,12 +189,18 @@ class MCPClient1C:
         }
         if not self.base_url:
             raise RuntimeError("MCP_SERVER_URL не задан в переменных окружения")
+        
+        headers = {}
+        if self.auth:
+            headers["Authorization"] = self.auth
+        
         logger.info(
-            "MCP notification -> method=%s payload=%s",
+            "MCP notification -> method=%s payload=%s auth=%s",
             method,
             self._shorten(payload),
+            "yes" if self.auth else "no",
         )
-        response = await self.client.post(self.base_url, json=payload)
+        response = await self.client.post(self.base_url, json=payload, headers=headers)
         response.raise_for_status()
         logger.info(
             "MCP notification ack <- method=%s status=%s",
