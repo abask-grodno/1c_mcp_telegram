@@ -142,17 +142,26 @@ async def handle_message(message: types.Message):
         conversation_history.append({"role": "assistant", "content": ai_response})
 
         while iteration < MAX_ITERATIONS:
-            iteration += 1
-            await message.answer(
-                f"⏳ Итерация {iteration}/{MAX_ITERATIONS}. Выполняю MCP-инструмент: `{tool_name}`..."
-            )
+            cache_hit = False
 
             try:
                 mcp_result_raw = await mcp_1c.call_tool(tool_name, tool_arguments)
                 last_error = None
+                cache_hit = bool(getattr(mcp_1c, "last_call_cache_hit", False))
             except Exception as exc:
                 last_error = str(exc)
                 mcp_result_raw = ""
+                cache_hit = False
+
+            if not cache_hit:
+                iteration += 1
+                await message.answer(
+                    f"⏳ Итерация {iteration}/{MAX_ITERATIONS}. Выполняю MCP-инструмент: `{tool_name}`..."
+                )
+            else:
+                await message.answer(
+                    f"📄 Использую кэшированную структуру `{tool_name}` без увеличения счётчика попыток."
+                )
 
             iteration_messages = [
                 {
