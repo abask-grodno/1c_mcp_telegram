@@ -279,4 +279,4 @@ LOG_LEVEL=DEBUG python bot.py
 
 - [aiogram](https://docs.aiogram.dev/) — асинхронный фреймворк для Telegram Bot API
 - [httpx](https://www.python-httpx.org/) — асинхронный HTTP-клиент
-- Разработчикам MCP-протокола и интеграции с 1С
+- [1c mcp](https://github.com/vladimir-kharin/1c_mcp) Разработчикам интеграции MCP 1С
