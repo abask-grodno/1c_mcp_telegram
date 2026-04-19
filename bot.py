@@ -43,6 +43,13 @@ logging.basicConfig(level=LOG_LEVEL, format=LOG_FORMAT, handlers=handlers)
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
 
+# Parse allowed chat IDs
+allowed_chat_ids_str = os.getenv("ALLOWED_CHAT_IDS", "").strip()
+if allowed_chat_ids_str:
+    ALLOWED_CHAT_IDS = set(int(cid.strip()) for cid in allowed_chat_ids_str.split(",") if cid.strip())
+else:
+    ALLOWED_CHAT_IDS = None  # Allow all chats
+
 ai_client = AIClient()
 mcp_1c = MCPClient1C()
 MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "5"))
@@ -102,8 +109,26 @@ async def on_shutdown():
     await mcp_1c.close()
 
 
+async def check_chat_access(message: types.Message) -> bool:
+    """Проверяет, разрешён ли доступ для данного chat ID."""
+    if ALLOWED_CHAT_IDS is None:
+        return True  # Все чаты разрешены
+    
+    chat_id = message.chat.id
+    if chat_id in ALLOWED_CHAT_IDS:
+        return True
+    
+    logger = logging.getLogger("bot")
+    logger.warning("Access denied for chat ID: %s", chat_id)
+    await message.answer("🚫 Это частный бот. Доступ ограничен.")
+    return False
+
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    if not await check_chat_access(message):
+        return
+    
     await message.answer(
         "👋 Привет! Я бот-помощник для работы с 1С через MCP.\n\n"
         "📋 **Возможности:**\n"
@@ -123,6 +148,9 @@ async def cmd_start(message: types.Message):
 
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
+    if not await check_chat_access(message):
+        return
+    
     await message.answer(
         "📋 **Доступные команды:**\n\n"
         "• /start — приветственное сообщение\n"
@@ -143,12 +171,18 @@ async def cmd_help(message: types.Message):
 
 @dp.message(Command("clear"))
 async def cmd_clear(message: types.Message):
+    if not await check_chat_access(message):
+        return
+    
     ContextManager.clear_dialog(message.chat.id)
     await message.answer("✅ История диалога для этого чата очищена.")
 
 
 @dp.message(F.text)
 async def handle_message(message: types.Message):
+    if not await check_chat_access(message):
+        return
+    
     chat_id = message.chat.id
     user_text = message.text or ""
 
