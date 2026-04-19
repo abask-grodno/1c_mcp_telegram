@@ -57,3 +57,6 @@ contexts/structure/*.json
 # Temporary files
 *.tmp
 *.temp
+
+#service scripts
+git-push.sh
