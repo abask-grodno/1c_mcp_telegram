@@ -265,7 +265,7 @@ LOG_LEVEL=DEBUG python bot.py
 
 ## Лицензия
 
-as-is
+MIT
 
 ## Благодарности
 
