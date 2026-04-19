@@ -2,6 +2,11 @@
 
 Telegram бот для работы с 1С через MCP (Model Context Protocol) с поддержкой различных AI-моделей.
 
+## Как это работает
+
+- Для работы чат-бота необходимо установить расширение MCP в вашу базу данных и опубликовать http сервис
+расширение 1c_mcp и документация по установке доступно по адресу https://github.com/vladimir-kharin/1c_mcp
+
 ## Возможности
 
 - **Интеграция с 1С** через MCP-сервер
@@ -23,8 +28,8 @@ Telegram бот для работы с 1С через MCP (Model Context Protoco
 ### 2. Клонирование репозитория
 
 ```bash
-git clone <repository-url>
-cd telegram-1c-mcp-bot
+git clone https://github.com/abask-grodno/1c_mcp_telegram.git
+cd 1c_mcp_telegram
 ```
 
 ### 3. Создание виртуального окружения
