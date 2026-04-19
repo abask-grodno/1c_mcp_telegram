@@ -73,12 +73,12 @@ AI_MODEL_BASE_URL=https://api.deepseek.com/v1/chat/completions
 AI_MODEL_NAME=deepseek-chat
 
 # Настройки MCP-сервера 1С
-MCP_SERVER_URL=http://127.0.0.1:8080/mcp
-MCP_AUTH_USERNAME=          # опционально
-MCP_AUTH_PASSWORD=          # опционально
+MCP_SERVER_URL=http://bases.1c-server.com/erp/hs/mcp
+MCP_AUTH_USERNAME=          # опционально пользователь 1С
+MCP_AUTH_PASSWORD=          # опционально пароль пользователя 1С
 
 # Лимит итераций для уточнения запросов
-MAX_ITERATIONS=5
+MAX_ITERATIONS=10
 
 # Настройки логирования
 LOG_LEVEL=INFO
@@ -102,20 +102,14 @@ ALLOWED_CHAT_IDS=123456789,987654321
 
 ### 7. Настройка MCP-сервера 1С
 
-Убедитесь, что у вас настроен MCP-сервер для 1С. Пример конфигурации для 1С:
+Убедитесь, что у вас настроен MCP-сервер для 1С:
 
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "tools/list",
-  "params": {}
-}
-```
+http://bases.1c-server.com/erp/hs/mcp/health
 
 Сервер должен поддерживать следующие инструменты:
 - `list_metadata_objects` — список объектов метаданных
 - `get_metadata_structure` — структура конкретного объекта
-- Другие инструменты для работы с данными
+- `custom_query` — произвольный запрос к БД на языке 1С
 
 ## Использование
 
@@ -271,14 +265,7 @@ LOG_LEVEL=DEBUG python bot.py
 
 ## Лицензия
 
-[Указать лицензию]
-
-## Контрибьютинг
-
-1. Форкните репозиторий
-2. Создайте ветку для вашей функции
-3. Внесите изменения
-4. Создайте Pull Request
+as-is
 
 ## Благодарности
 
