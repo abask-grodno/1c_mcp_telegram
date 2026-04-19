@@ -40,6 +40,9 @@ venv.bak/
 logs/
 *.log
 
+# dialogs
+dialogs/
+
 # IDE
 .vscode/
 .idea/
