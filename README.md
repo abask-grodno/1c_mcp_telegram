@@ -104,7 +104,7 @@ ALLOWED_CHAT_IDS=123456789,987654321
 
 Убедитесь, что у вас настроен MCP-сервер для 1С:
 
-http://bases.1c-server.com/erp/hs/mcp/health
+https://bases.1cserver.com/erp/hs/mcp/health
 
 Сервер должен поддерживать следующие инструменты:
 - `list_metadata_objects` — список объектов метаданных
