@@ -73,7 +73,7 @@ AI_MODEL_BASE_URL=https://api.deepseek.com/v1/chat/completions
 AI_MODEL_NAME=deepseek-chat
 
 # Настройки MCP-сервера 1С
-MCP_SERVER_URL=http://bases.1c-server.com/erp/hs/mcp
+MCP_SERVER_URL=http://bases.1cserver.com/erp/hs/mcp
 MCP_AUTH_USERNAME=          # опционально пользователь 1С
 MCP_AUTH_PASSWORD=          # опционально пароль пользователя 1С
 
